@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: flight_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: reservation
+      MYSQL_USER: flightuser
+      MYSQL_PASSWORD: flightpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./flight.sql:/docker-entrypoint-initdb.d/flight.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  flightservice:
+    build:
+      context: .
+      dockerfile: Dockerfile  # if your Dockerfile is named Dockerfile.txt
+    image: flightservice:latest
+    container_name: flight_service
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: reservation
+      DB_USER: flightuser
+      DB_PASSWORD: flightpass
+      APP_PORT: "8080"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  db_data: {}
